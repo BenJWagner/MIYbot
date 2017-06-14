@@ -1,4 +1,4 @@
-/*
+ /*
 MIYbot Test Program
 
 6/23/13
@@ -30,12 +30,24 @@ Working on makeing this software more generic and cleaning up the code.
 #include <TimerFreeTone.h>
 #include <stdio.h>
 #include <Servo.h>  // SoftwareServo (works on non PWM pins)
-
+QTRSensorsRC qtrrc((unsigned char[]) {LINE_SENSOR_LEFT, LINE_SENSOR_RIGHT},  2, 2048, QTR_NO_EMITTER_PIN); 
         
 MIYbot MB;
-int mode = 0;  //mode 0 is the start mode
+int mode = 1;  //mode 1 is the start mode
 
-QTRSensorsRC qtrrc((unsigned char[]) {LINE_SENSOR_LEFT, LINE_SENSOR_RIGHT},  2, 2048, QTR_NO_EMITTER_PIN); 
+//********************************************
+// Please set this value to 0, 1, 2, or 3
+// Controls what initial direction of the servos
+// 0 = both servos fwd
+// 1 = left fwd, right reverse
+// 2 = left reverse, right fwd
+// 3 = both servos rev
+//
+int Servo_Config =2 ;
+//
+//
+//********************************************
+
 
 
 //  Please edit the following procedures to make your robot do what you want it to do.
@@ -55,10 +67,10 @@ void Red(){
   //thresholds
   int LineThreshold = 1000;
   int PingThreshold = 600;
-  int tmpspeed = SLOW;
+  int tmpspeed = MEDIUM;
   int backspeed = SUPER_SLOW;
 
-  while(!MB.button2_is_pressed()){
+  while(true){
      uS_R = MB.usPing_R(); // Send ping, get ping time in microseconds (uS).
      uS_L = MB.usPing_L(); // Send ping, get ping time in microseconds (uS).
      Serial.print("Ultrasonic sensors L: ");
@@ -104,7 +116,7 @@ void Orange() {
   int g = 0;
   int b = 0;
 
-  while(!MB.button2_is_pressed()){
+  while(true){
      r = 0;
      g = 0;
      b = 0;
@@ -138,6 +150,7 @@ void Yellow() {
   Serial.println("Yellow");
   int LineThreshold = 750;
   
+  ////QTRSensorsRC qtrrc((unsigned char[]) {LINE_SENSOR_LEFT, LINE_SENSOR_RIGHT},  2, 2048, QTR_NO_EMITTER_PIN); 
   unsigned int sensorValues[2];  //variable for line sensors
 
   int r = 0;
@@ -145,7 +158,7 @@ void Yellow() {
   int b = 0;
   
   MB.setRGB(r,g,b);
-  while(!MB.button2_is_pressed()){
+  while(true){
      r = 0;
      g = 0;
      b = 0;
@@ -163,7 +176,43 @@ void Yellow() {
   MB.setColor(YELLOW);
 };
 
-
+//************************************************************************************************
+//
+// BLUE - Line Follow
+//
+//************************************************************************************************
+void Blue() {
+  Serial.println("Blue");
+  int LineThreshold = 500;
+  int tmpspeed;
+  unsigned int uS_R;
+  unsigned int uS_L;
+  int PingThreshold = 1200;
+  
+  ////QTRSensorsRC qtrrc((unsigned char[]) {LINE_SENSOR_LEFT, LINE_SENSOR_RIGHT},  2, 2048, QTR_NO_EMITTER_PIN); 
+  unsigned int sensorValues[2];  //variable for line sensors
+  
+  //MB.setTrim(10);
+  while(true){
+    
+    //check the line sensors
+     qtrrc.read(sensorValues);
+     if (sensorValues[1] >LineThreshold) {
+        MB.setRGB(255, 0, 0);
+        MB.motorStop();
+        MB.MotorRun(3,SUPER_SLOW, true);
+        delay(50);
+        MB.setRGB(0, 0, 0);
+     } else {
+        MB.setRGB(0, 255, 0);
+        MB.motorStop();
+        MB.MotorRun(2,SUPER_SLOW, true);
+        delay(50);
+        MB.setRGB(0, 0, 0);
+     }
+  }
+  MB.motorStop();
+};
 
 //************************************************************************************************
 //
@@ -172,62 +221,225 @@ void Yellow() {
 //************************************************************************************************
 void Green() {
   Serial.println("Green");
+  int LineThreshold = 750;
+  int backspeed = SUPER_SLOW;
+  int tmpspeed;
+  unsigned int uS_R;
+  unsigned int uS_L;
+  int PingThreshold = 1200;
+  
+  ////QTRSensorsRC qtrrc((unsigned char[]) {LINE_SENSOR_LEFT, LINE_SENSOR_RIGHT},  2, 2048, QTR_NO_EMITTER_PIN); 
+  unsigned int sensorValues[2];  //variable for line sensors
   //MB.setTrim(10);
-  while(!MB.button2_is_pressed()){
-      MB.setRGB(0, 255, 0);
+
+  MB.sumoCountdown(5);
+  
+  while(true){
+    
+    //check the line sensors
+     qtrrc.read(sensorValues);
+     if (sensorValues[1]<LineThreshold) {
+        MB.setRGB(255, 0, 0);
+        MB.reverse(FAST);
+        delay(500);
+        MB.MotorRun(3,backspeed, true);
+        MB.MotorRun(2,backspeed, false);
+        delay(750);
+        MB.setRGB(0, 0, 0);
+        delay(50);
+     }    
+     else if (sensorValues[0]<LineThreshold) {
+        MB.setRGB(0, 255, 0);
+        MB.reverse(FAST);
+        delay(500);
+        MB.MotorRun(3,backspeed, false);
+        MB.MotorRun(2,backspeed, true);
+        delay(750);
+        MB.setRGB(0, 0, 0);
+        delay(50); 
+     }
+    
+     uS_R = MB.usPing_R(); // Send ping, get ping time in microseconds (uS).
+     uS_L = MB.usPing_L(); // Send ping, get ping time in microseconds (uS).
+     
+     
+     if (uS_R < PingThreshold && uS_R != 0) {
+        MB.MotorRun(3,200, true);
+        MB.MotorRun(2,0, true);
+        delay(50);
+     }    
+     else if (uS_L < PingThreshold && uS_L != 0) {
+        MB.MotorRun(3,0, true);
+        MB.MotorRun(2,200, true);
+        delay(50);
+     }
+     else {
+       MB.forward(255);
+     }
+     
+
+    
   }
 };
 
-//************************************************************************************************
-//
-// BLUE - WHAT DOES THIS PROC DO?
-//
-//************************************************************************************************
-void Blue() {
-  Serial.println("Blue");
-  MB.setColor(BLUE);
-};
+
 
 //************************************************************************************************
 //
-// DESCRIPTION - WHAT DOES THIS PROCEDURE DO???
+// DESCRIPTION - Sumo fight 2
 //
 //************************************************************************************************  
 void Purple(){
   Serial.println("Purple");
+    Serial.println("Green");
+  int LineThreshold = 750;
+  int backspeed = SUPER_SLOW;
+  int tmpspeed;
+  unsigned int uS_R;
+  unsigned int uS_L;
+  int PingThreshold = 1200;
   
+  ////QTRSensorsRC qtrrc((unsigned char[]) {LINE_SENSOR_LEFT, LINE_SENSOR_RIGHT},  2, 2048, QTR_NO_EMITTER_PIN); 
+  unsigned int sensorValues[2];  //variable for line sensors
+  //MB.setTrim(10);
+  MB.sumoCountdown(5);
+  while(true){
+    
+    //check the line sensors
+     qtrrc.read(sensorValues);
+     if (sensorValues[1]<LineThreshold) {
+        MB.setRGB(255, 0, 0);
+        MB.MotorRun(3,backspeed, true);
+        MB.MotorRun(2,backspeed, false);
+        delay(500);
+        MB.setRGB(0, 0, 0);
+        delay(50);
+     }    
+     if (sensorValues[0]<LineThreshold) {
+        MB.setRGB(0, 255, 0);
+        MB.MotorRun(3,backspeed, false);
+        MB.MotorRun(2,backspeed, true);
+        delay(500);
+        MB.setRGB(0, 0, 0);
+        delay(50); 
+     }
+    
+     uS_R = MB.usPing_R(); // Send ping, get ping time in microseconds (uS).
+     uS_L = MB.usPing_L(); // Send ping, get ping time in microseconds (uS).
+     
+     
+     if (uS_R < PingThreshold && uS_R != 0) {
+        MB.MotorRun(3,FAST, true);
+        MB.MotorRun(2,0, true);
+        delay(50);
+     }    
+     else if (uS_L < PingThreshold && uS_L != 0) {
+        MB.MotorRun(3,0, true);
+        MB.MotorRun(2,FAST, true);
+        delay(50);
+     }
+     else {
+       MB.forward(255);
+     }
+     
+
+    
+  }
 } 
 
 //************************************************************************************************
 //
-// WHITE - 
+// WHITE - Sumo fight 3  - run away
 //
 //************************************************************************************************
 void White() {
   Serial.println("White"); 
+  Serial.println("Green");
+  int LineThreshold = 750;
+  int backspeed = SUPER_SLOW;
+  int tmpspeed;
+  unsigned int uS_R;
+  unsigned int uS_L;
+  int PingThreshold = 1200;
+  
+  ////QTRSensorsRC qtrrc((unsigned char[]) {LINE_SENSOR_LEFT, LINE_SENSOR_RIGHT},  2, 2048, QTR_NO_EMITTER_PIN); 
+  unsigned int sensorValues[2];  //variable for line sensors
+  //MB.setTrim(10);
+  MB.sumoCountdown(5);
+  while(true){
+    
+    //check the line sensors
+     qtrrc.read(sensorValues);
+     if (sensorValues[1]<LineThreshold) {
+        MB.setRGB(255, 0, 0);
+        MB.reverse(FAST);
+        delay(300);
+        MB.MotorRun(3,backspeed, true);
+        MB.MotorRun(2,backspeed, false);
+        delay(750);
+        MB.setRGB(0, 0, 0);
+        delay(50);
+     }    
+     if (sensorValues[0]<LineThreshold) {
+        MB.setRGB(0, 255, 0);
+        MB.reverse(FAST);
+        delay(300);
+        MB.MotorRun(3,backspeed, false);
+        MB.MotorRun(2,backspeed, true);
+        delay(750);
+        MB.setRGB(0, 0, 0);
+        delay(50); 
+     }
+    
+     uS_R = MB.usPing_R(); // Send ping, get ping time in microseconds (uS).
+     uS_L = MB.usPing_L(); // Send ping, get ping time in microseconds (uS).
+     
+     
+     if (uS_R < PingThreshold && uS_R != 0) {
+        MB.MotorRun(3,0, true);
+        MB.MotorRun(2,FAST, true);
+        delay(300);
+     }    
+     else if (uS_L < PingThreshold && uS_L != 0) {
+        MB.MotorRun(3,FAST, true);
+        MB.MotorRun(2,0, true);
+        delay(300);
+     }
+     else {
+       MB.forward(255);
+     }
+     
+
+    
+  }
+  
 };
 
 //************************************************************************************************
 //
-// PINK - Test the line sensors
+// PINK - Set the servos to zero position
+//        zero the servo so it does not move my
+//        adjusting the tiny screw on the bottom of the servo
 //
 //************************************************************************************************
 void Pink() {
   
   Serial.println("Pink");
+  MB.MotorRun(1,0,true);
+  MB.MotorRun(2,0,true);
+  MB.MotorRun(3,0,true);
   MB.setColor(PINK);
 	  
 };
 
 //************************************************************************************************
 //
-// Play shave and a haircut
+// Play Mario theme
 //
 //************************************************************************************************
 void Aqua() {
   Serial.println("Aqua");
   
-  // Melody (liberated from the toneMelody Arduino example sketch by Tom Igoe).
 int melody[] = {
   NOTE_E7, NOTE_E7, 0, NOTE_E7,
   0, NOTE_C7, NOTE_E7, 0,
@@ -321,11 +533,11 @@ void setup() {
   delay(200);
   MB.setRGB(0,0,0);
   delay(200);
-  MB.setRGB(255,0,0);
+  MB.setColor(GREEN);
   
   // start mode red
   mode = 1;
-  MB.setServoConfiguration(2);
+  MB.setServoConfiguration(Servo_Config);
   MB.beep();
   MB.beep();
 }
@@ -339,19 +551,19 @@ void loop() {
      case 1: 
        MB.beep();
        MB.beep();
-       MB.setColor(RED);
+       MB.setColor(GREEN); // RED);
        break; 
      case 2:  
        MB.beep();
-       MB.setColor(ORANGE);
+       MB.setColor(PURPLE);  //ORANGE);
        break;
      case 3:  
        MB.beep();
-       MB.setColor(YELLOW);
+       MB.setColor(WHITE);  //YELLOW);
        break;
      case 4: 
        MB.beep();
-       MB.setColor(GREEN);
+       MB.setColor(RED); //GREEN);
        break;
      case 5:  
        MB.beep();
@@ -359,11 +571,11 @@ void loop() {
        break;
      case 6:
        MB.beep();
-       MB.setColor(PURPLE);
+       MB.setColor(ORANGE); //PURPLE);
        break;
      case 7:
        MB.beep();
-       MB.setColor(WHITE);
+       MB.setColor(YELLOW); //WHITE);
        break;
      case 8:
        MB.beep(); 
@@ -377,40 +589,44 @@ void loop() {
 
      
   }
-  else if ( MB.button2_is_pressed()) {
-     //MB.beep();
-     //MB.beep();
-
+  
+  if ( MB.button2_is_pressed()) {
+     //MB.hibeep();
      switch (mode) {
      case 1:
-       Red();
+       Green(); //Red();
        break;
        
      case 2:
-       Orange();
+       Purple(); //Orange();
       break;
       
      case 3:
-        Yellow();
+        White(); //Yellow();
         break;
         
      case 4:
-       Green();
+       MB.hibeep();
+       Red(); //Green();
        break;
      
      case 5:
+       MB.hibeep();
        Blue();
        break;
        
      case 6:
-       Purple();
+       MB.hibeep();
+       Orange();  //Purple();
        break;
        
      case 7:
-       White();
+       MB.hibeep();
+       Yellow(); //White();
        break;
        
       case 8:
+       MB.hibeep();
        Pink();
        break;
        
